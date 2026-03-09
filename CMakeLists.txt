@@ -4,7 +4,12 @@ else ()
   cmake_minimum_required( VERSION 3.10 )
 endif ()
 
-project( uxplay )
+# CMake project version must be numeric
+project( uxplay VERSION 1.72 )
+# Custom display version string
+set( UXPLAY_VERSION_STRING "1.72-zyufork.1+20260310" )
+
+add_definitions( -DVERSION=\"${UXPLAY_VERSION_STRING}\" )
 
 message( STATUS "Project name: " ${PROJECT_NAME} )
 

@@ -53,10 +53,16 @@ jobs:
         cmake ..
         make
         
+    - name: Get Version
+      id: get_version
+      run: |
+        VERSION=$(grep 'set( UXPLAY_VERSION_STRING' CMakeLists.txt | sed 's/set( UXPLAY_VERSION_STRING "//;s/" )//')
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: UxPlay-Linux-x64
+        name: UxPlay-Linux-x64-v${{ env.VERSION }}
         path: build/uxplay
 
   build-windows:
@@ -84,7 +90,6 @@ jobs:
           mingw-w64-x86_64-gst-libav
           mingw-w64-x86_64-openssl
           mingw-w64-x86_64-libplist
-          mingw-w64-x86_64-libdnssd
 
     - name: Build
       shell: msys2 {0}
@@ -93,9 +98,11 @@ jobs:
         cd build
         cmake .. -G "Unix Makefiles"
         make
+        VERSION=$(grep 'set( UXPLAY_VERSION_STRING' ../CMakeLists.txt | sed 's/set( UXPLAY_VERSION_STRING "//;s/" )//')
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: UxPlay-Windows-x64
+        name: UxPlay-Windows-x64-v${{ env.VERSION }}
         path: build/uxplay.exe

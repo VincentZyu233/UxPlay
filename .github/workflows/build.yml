@@ -72,6 +72,23 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
+
+    - name: Install Bonjour SDK
+      shell: powershell
+      run: |
+        # Download Bonjour SDK
+        $sdkUrl = "https://download.info.apple.com/Mac_OS_X/061-8098.20100603.gthyu/BonjourSDKSetup.exe"
+        $installerPath = "$env:TEMP\BonjourSDKSetup.exe"
+        Invoke-WebRequest -Uri $sdkUrl -OutFile $installerPath
+        # Silent install
+        Start-Process -FilePath $installerPath -ArgumentList "/quiet", "/norestart" -Wait
+        # Verify installation
+        if (Test-Path "C:\Program Files\Bonjour SDK\Include\dns_sd.h") {
+          Write-Host "✅ Bonjour SDK installed successfully"
+        } else {
+          Write-Error "❌ Bonjour SDK installation failed"
+          exit 1
+        }
     
     - uses: msys2/setup-msys2@v2
       with:

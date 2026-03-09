@@ -107,6 +107,7 @@ jobs:
           mingw-w64-x86_64-cmake
           mingw-w64-x86_64-gcc
           mingw-w64-x86_64-pkg-config
+          mingw-w64-x86_64-tools-git
           mingw-w64-x86_64-gstreamer
           mingw-w64-x86_64-gst-plugins-base
           mingw-w64-x86_64-gst-plugins-good
@@ -129,11 +130,17 @@ jobs:
           echo "Found dnssd.dll at: $DNSSD_DLL"
           # Generate .def file from DLL exports
           gendef "$DNSSD_DLL"
-          # Generate import library
-          dlltool -d dnssd.def -l "/c/Program Files/Bonjour SDK/Lib/x64/dnssd.lib" -D dnssd.dll
-          echo "✅ Generated dnssd.lib"
+          # Generate import library for MinGW (use .a format)
+          dlltool -d dnssd.def -l dnssd.a -D dnssd.dll
+          # Copy to SDK location with both names
+          cp dnssd.a "/c/Program Files/Bonjour SDK/Lib/x64/dnssd.lib"
+          cp dnssd.a "/c/Program Files/Bonjour SDK/Lib/x64/dnssd.a"
+          ls -la "/c/Program Files/Bonjour SDK/Lib/x64/"
+          echo "✅ Generated dnssd import library"
         else
-          echo "⚠️ dnssd.dll not found, will rely on CMake to find it"
+          echo "❌ dnssd.dll not found!"
+          find /c/Program\ Files* -name "dnssd.dll" 2>/dev/null || echo "No dnssd.dll found anywhere"
+          exit 1
         fi
 
     - name: Build

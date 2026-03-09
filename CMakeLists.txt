@@ -7,7 +7,7 @@ endif ()
 # CMake project version must be numeric
 project( uxplay VERSION 1.72 )
 # Custom display version string
-set( UXPLAY_VERSION_STRING "1.72-zyufork.1+20260310" )
+set( UXPLAY_VERSION_STRING "1.72-zyufork.2+20260310" )
 
 add_definitions( -DVERSION=\"${UXPLAY_VERSION_STRING}\" )
 

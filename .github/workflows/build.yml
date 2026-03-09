@@ -242,14 +242,33 @@ jobs:
           libgstvideoconvertscale.dll
           libgstvideorate.dll
           libgstvolume.dll
+          libgstlevel.dll
+          libgstaudioparsers.dll
           libgstapp.dll
           libgsttypefindfunctions.dll
           libgstvideoparsersbad.dll
           libgstlibav.dll
           libgstd3d11.dll
           libgstwasapi.dll
+          libgstwasapi2.dll
           libgstopus.dll
           libgstaac.dll
+          libgstfdkaac.dll
+          libgstx264.dll
+          libgstx265.dll
+          libgstopenh264.dll
+          libgstvpx.dll
+          libgstavi.dll
+          libgstmatroska.dll
+          libgstisomp4.dll
+          libgstaudiotestsrc.dll
+          libgstvideotestsrc.dll
+          libgstgio.dll
+          libgsttcp.dll
+          libgstudp.dll
+          libgstrtp.dll
+          libgstrtpmanager.dll
+          libgstrtsp.dll
         "
         for plugin in $ESSENTIAL_PLUGINS; do
           if [ -f "$GST_PLUGIN_DIR/$plugin" ]; then

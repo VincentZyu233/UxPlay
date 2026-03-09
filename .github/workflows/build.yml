@@ -151,36 +151,58 @@ jobs:
     - name: Generate dnssd import library
       shell: msys2 {0}
       run: |
-        echo "=== Searching for dnssd.dll ==="
-        # Search for dnssd.dll in common locations
-        find /c/Program\ Files* -name "*.dll" -path "*onjour*" 2>/dev/null | head -20
-        find /c/ProgramData -name "dnssd.dll" 2>/dev/null | head -10
-        find /c/Windows -name "dnssd.dll" 2>/dev/null | head -10
+        echo "=== Checking for dnssd.dll ==="
         
-        # Check specific paths
-        echo "=== Checking specific paths ==="
-        ls -la "/c/Program Files (x86)/Bonjour/" 2>/dev/null || echo "No /c/Program Files (x86)/Bonjour/"
-        ls -la "/c/Program Files/Bonjour/" 2>/dev/null || echo "No /c/Program Files/Bonjour/"
-        ls -la /c/ProgramData/chocolatey/lib/bonjour/ 2>/dev/null || echo "No chocolatey bonjour dir"
+        # Check known locations only (don't scan entire disk!)
+        DNSSD_DLL=""
+        for path in \
+          "/c/Program Files (x86)/Bonjour/dnssd.dll" \
+          "/c/Program Files/Bonjour/dnssd.dll" \
+          "/c/Windows/System32/dnssd.dll" \
+          "/c/Windows/SysWOW64/dnssd.dll"
+        do
+          if [ -f "$path" ]; then
+            DNSSD_DLL="$path"
+            break
+          fi
+        done
         
-        # Try to find dnssd.dll anywhere
-        DNSSD_DLL=$(find /c -name "dnssd.dll" 2>/dev/null | head -1)
+        # Debug: show what's in Bonjour dir
+        echo "=== Bonjour directory contents ==="
+        ls -la "/c/Program Files (x86)/Bonjour/" 2>/dev/null || echo "(x86) not found"
+        ls -la "/c/Program Files/Bonjour/" 2>/dev/null || echo "(x64) not found"
         
-        if [ -n "$DNSSD_DLL" ] && [ -f "$DNSSD_DLL" ]; then
+        if [ -n "$DNSSD_DLL" ]; then
           echo "Found dnssd.dll at: $DNSSD_DLL"
-          # Generate .def file from DLL exports
           gendef "$DNSSD_DLL"
-          # Generate import library for MinGW (use .a format)
           dlltool -d dnssd.def -l dnssd.a -D dnssd.dll
-          # Copy to SDK location with both names
           cp dnssd.a "/c/Program Files/Bonjour SDK/Lib/x64/dnssd.lib"
           cp dnssd.a "/c/Program Files/Bonjour SDK/Lib/x64/dnssd.a"
           ls -la "/c/Program Files/Bonjour SDK/Lib/x64/"
           echo "✅ Generated dnssd import library"
         else
-          echo "❌ dnssd.dll not found anywhere on the system!"
-          echo "Chocolatey bonjour package may not include dnssd.dll"
-          exit 1
+          echo "⚠️ dnssd.dll not found, creating stub library..."
+          # Create a minimal .def file for dnssd
+          cat > dnssd.def << 'EOF'
+LIBRARY dnssd.dll
+EXPORTS
+  DNSServiceRefSockFD
+  DNSServiceProcessResult
+  DNSServiceRefDeallocate
+  DNSServiceRegister
+  DNSServiceBrowse
+  DNSServiceResolve
+  DNSServiceGetAddrInfo
+  TXTRecordCreate
+  TXTRecordDeallocate
+  TXTRecordSetValue
+  TXTRecordGetLength
+  TXTRecordGetBytesPtr
+EOF
+          dlltool -d dnssd.def -l dnssd.a -D dnssd.dll
+          cp dnssd.a "/c/Program Files/Bonjour SDK/Lib/x64/dnssd.lib"
+          cp dnssd.a "/c/Program Files/Bonjour SDK/Lib/x64/dnssd.a"
+          echo "✅ Created stub dnssd import library (user must install Bonjour runtime)"
         fi
 
     - name: Build

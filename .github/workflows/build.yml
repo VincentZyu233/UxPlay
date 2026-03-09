@@ -120,13 +120,22 @@ jobs:
     - name: Generate dnssd import library
       shell: msys2 {0}
       run: |
-        # Find the dnssd.dll from Bonjour installation
-        DNSSD_DLL="/c/Program Files (x86)/Bonjour/dnssd.dll"
-        if [ ! -f "$DNSSD_DLL" ]; then
-          DNSSD_DLL="/c/Program Files/Bonjour/dnssd.dll"
-        fi
+        echo "=== Searching for dnssd.dll ==="
+        # Search for dnssd.dll in common locations
+        find /c/Program\ Files* -name "*.dll" -path "*onjour*" 2>/dev/null | head -20
+        find /c/ProgramData -name "dnssd.dll" 2>/dev/null | head -10
+        find /c/Windows -name "dnssd.dll" 2>/dev/null | head -10
         
-        if [ -f "$DNSSD_DLL" ]; then
+        # Check specific paths
+        echo "=== Checking specific paths ==="
+        ls -la "/c/Program Files (x86)/Bonjour/" 2>/dev/null || echo "No /c/Program Files (x86)/Bonjour/"
+        ls -la "/c/Program Files/Bonjour/" 2>/dev/null || echo "No /c/Program Files/Bonjour/"
+        ls -la /c/ProgramData/chocolatey/lib/bonjour/ 2>/dev/null || echo "No chocolatey bonjour dir"
+        
+        # Try to find dnssd.dll anywhere
+        DNSSD_DLL=$(find /c -name "dnssd.dll" 2>/dev/null | head -1)
+        
+        if [ -n "$DNSSD_DLL" ] && [ -f "$DNSSD_DLL" ]; then
           echo "Found dnssd.dll at: $DNSSD_DLL"
           # Generate .def file from DLL exports
           gendef "$DNSSD_DLL"
@@ -138,8 +147,8 @@ jobs:
           ls -la "/c/Program Files/Bonjour SDK/Lib/x64/"
           echo "✅ Generated dnssd import library"
         else
-          echo "❌ dnssd.dll not found!"
-          find /c/Program\ Files* -name "dnssd.dll" 2>/dev/null || echo "No dnssd.dll found anywhere"
+          echo "❌ dnssd.dll not found anywhere on the system!"
+          echo "Chocolatey bonjour package may not include dnssd.dll"
           exit 1
         fi
 

@@ -73,32 +73,28 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Bonjour SDK
+    - name: Setup Bonjour SDK
       shell: powershell
       run: |
+        # Create SDK directory structure
+        $sdkDir = "C:\Program Files\Bonjour SDK"
+        New-Item -ItemType Directory -Force -Path "$sdkDir\Include"
+        New-Item -ItemType Directory -Force -Path "$sdkDir\Lib\x64"
+        
+        # Download dns_sd.h from Apple's open source project
+        $headerUrl = "https://raw.githubusercontent.com/apple-oss-distributions/mDNSResponder/main/mDNSShared/dns_sd.h"
+        Write-Host "Downloading dns_sd.h..."
+        Invoke-WebRequest -Uri $headerUrl -OutFile "$sdkDir\Include\dns_sd.h" -UseBasicParsing
+        
+        # Install Bonjour runtime (contains dnssd.dll)
+        Write-Host "Installing Bonjour runtime via Chocolatey..."
         choco install bonjour -y
-        # Bonjour SDK headers are bundled in the bonjour package
-        # But we need the SDK specifically, let's download from archive.org as fallback
-        $sdkUrl = "https://web.archive.org/web/2024/https://download.info.apple.com/Mac_OS_X/061-8098.20100603.gthyu/BonjourSDKSetup.exe"
-        $installerPath = "$env:TEMP\BonjourSDKSetup.exe"
         
-        # Try multiple download methods
-        try {
-          curl.exe -L -o $installerPath $sdkUrl --retry 3 --retry-delay 5
-        } catch {
-          Write-Host "curl failed, trying Invoke-WebRequest..."
-          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-          Invoke-WebRequest -Uri $sdkUrl -OutFile $installerPath -UseBasicParsing
-        }
-        
-        # Silent install
-        Start-Process -FilePath $installerPath -ArgumentList "/quiet", "/norestart" -Wait -ErrorAction SilentlyContinue
-        
-        # Verify installation
-        if (Test-Path "C:\Program Files\Bonjour SDK\Include\dns_sd.h") {
-          Write-Host "✅ Bonjour SDK installed successfully"
+        # Verify dns_sd.h
+        if (Test-Path "$sdkDir\Include\dns_sd.h") {
+          Write-Host "✅ dns_sd.h downloaded successfully"
         } else {
-          Write-Error "❌ Bonjour SDK installation failed - dns_sd.h not found"
+          Write-Error "❌ Failed to download dns_sd.h"
           exit 1
         }
     
@@ -120,12 +116,32 @@ jobs:
           mingw-w64-x86_64-openssl
           mingw-w64-x86_64-libplist
 
+    - name: Generate dnssd import library
+      shell: msys2 {0}
+      run: |
+        # Find the dnssd.dll from Bonjour installation
+        DNSSD_DLL="/c/Program Files (x86)/Bonjour/dnssd.dll"
+        if [ ! -f "$DNSSD_DLL" ]; then
+          DNSSD_DLL="/c/Program Files/Bonjour/dnssd.dll"
+        fi
+        
+        if [ -f "$DNSSD_DLL" ]; then
+          echo "Found dnssd.dll at: $DNSSD_DLL"
+          # Generate .def file from DLL exports
+          gendef "$DNSSD_DLL"
+          # Generate import library
+          dlltool -d dnssd.def -l "/c/Program Files/Bonjour SDK/Lib/x64/dnssd.lib" -D dnssd.dll
+          echo "✅ Generated dnssd.lib"
+        else
+          echo "⚠️ dnssd.dll not found, will rely on CMake to find it"
+        fi
+
     - name: Build
       shell: msys2 {0}
       run: |
         mkdir build
         cd build
-        cmake .. -G "Unix Makefiles"
+        cmake .. -G "Unix Makefiles" -DNO_MARCH_NATIVE=ON
         make
         VERSION=$(grep 'set( UXPLAY_VERSION_STRING' ../CMakeLists.txt | sed 's/set( UXPLAY_VERSION_STRING "//;s/" )//')
         echo "VERSION=$VERSION" >> $GITHUB_ENV

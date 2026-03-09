@@ -1,0 +1,101 @@
+name: Build UxPlay
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  check:
+    name: Check commit message
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.flags.outputs.should_build }}
+    steps:
+      - name: Parse commit message
+        id: flags
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          if [[ "$COMMIT_MSG" == *"build action"* ]] || [[ "$COMMIT_MSG" == *"build release"* ]]; then
+             echo "should_build=true" >> "$GITHUB_OUTPUT"
+             echo "Build triggered via commit message keyword."
+          else
+             echo "should_build=false" >> "$GITHUB_OUTPUT"
+             echo "No build keyword found in commit message. Skipping build."
+          fi
+
+  build-linux:
+    needs: check
+    if: needs.check.outputs.should_build == 'true'
+    name: Build Linux (x64)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake libssl-dev libplist-dev libavahi-compat-libdnssd-dev \
+        libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev \
+        gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake ..
+        make
+        
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: UxPlay-Linux-x64
+        path: build/uxplay
+
+  build-windows:
+    needs: check
+    if: needs.check.outputs.should_build == 'true'
+    name: Build Windows (x64)
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-pkg-config
+          mingw-w64-x86_64-make
+          mingw-w64-x86_64-gstreamer
+          mingw-w64-x86_64-gst-plugins-base
+          mingw-w64-x86_64-gst-plugins-good
+          mingw-w64-x86_64-gst-plugins-bad
+          mingw-w64-x86_64-gst-plugins-ugly
+          mingw-w64-x86_64-gst-libav
+          mingw-w64-x86_64-openssl
+          mingw-w64-x86_64-libplist
+          mingw-w64-x86_64-libdnssd
+
+    - name: Build
+      shell: msys2 {0}
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G "Unix Makefiles"
+        make
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: UxPlay-Windows-x64
+        path: build/uxplay.exe

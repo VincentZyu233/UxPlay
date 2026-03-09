@@ -86,9 +86,31 @@ jobs:
         Write-Host "Downloading dns_sd.h..."
         Invoke-WebRequest -Uri $headerUrl -OutFile "$sdkDir\Include\dns_sd.h" -UseBasicParsing
         
-        # Install Bonjour runtime (contains dnssd.dll)
-        Write-Host "Installing Bonjour runtime via Chocolatey..."
-        choco install bonjour -y
+        # Try multiple methods to get Bonjour/dnssd.dll
+        Write-Host "Installing Bonjour runtime..."
+        
+        # Method 1: Try winget first
+        try {
+          winget install --id Apple.Bonjour --silent --accept-package-agreements --accept-source-agreements
+          Write-Host "✅ Installed via winget"
+        } catch {
+          Write-Host "winget failed, trying alternative..."
+        }
+        
+        # Method 2: Download Bonjour Print Services directly from Apple
+        if (-not (Test-Path "C:\Program Files\Bonjour\mdnsNSP.dll")) {
+          Write-Host "Downloading Bonjour Print Services..."
+          $bonjourUrl = "https://download.info.apple.com/Mac_OS_X/061-8098.20100603.gthyu/BonjourPSSetup.exe"
+          $installerPath = "$env:TEMP\BonjourPSSetup.exe"
+          
+          # Try curl (more reliable than Invoke-WebRequest for some servers)
+          curl.exe -L -o $installerPath "https://support.apple.com/downloads/DL999/en_US/BonjourPSSetup.exe" --retry 3
+          
+          if (Test-Path $installerPath) {
+            Write-Host "Running Bonjour installer..."
+            Start-Process -FilePath $installerPath -ArgumentList "/quiet", "/norestart" -Wait -ErrorAction SilentlyContinue
+          }
+        }
         
         # Verify dns_sd.h
         if (Test-Path "$sdkDir\Include\dns_sd.h") {

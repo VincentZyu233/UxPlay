@@ -183,22 +183,20 @@ jobs:
         else
           echo "⚠️ dnssd.dll not found, creating stub library..."
           # Create a minimal .def file for dnssd
-          cat > dnssd.def << 'EOF'
-LIBRARY dnssd.dll
-EXPORTS
-  DNSServiceRefSockFD
-  DNSServiceProcessResult
-  DNSServiceRefDeallocate
-  DNSServiceRegister
-  DNSServiceBrowse
-  DNSServiceResolve
-  DNSServiceGetAddrInfo
-  TXTRecordCreate
-  TXTRecordDeallocate
-  TXTRecordSetValue
-  TXTRecordGetLength
-  TXTRecordGetBytesPtr
-EOF
+          echo "LIBRARY dnssd.dll" > dnssd.def
+          echo "EXPORTS" >> dnssd.def
+          echo "  DNSServiceRefSockFD" >> dnssd.def
+          echo "  DNSServiceProcessResult" >> dnssd.def
+          echo "  DNSServiceRefDeallocate" >> dnssd.def
+          echo "  DNSServiceRegister" >> dnssd.def
+          echo "  DNSServiceBrowse" >> dnssd.def
+          echo "  DNSServiceResolve" >> dnssd.def
+          echo "  DNSServiceGetAddrInfo" >> dnssd.def
+          echo "  TXTRecordCreate" >> dnssd.def
+          echo "  TXTRecordDeallocate" >> dnssd.def
+          echo "  TXTRecordSetValue" >> dnssd.def
+          echo "  TXTRecordGetLength" >> dnssd.def
+          echo "  TXTRecordGetBytesPtr" >> dnssd.def
           dlltool -d dnssd.def -l dnssd.a -D dnssd.dll
           cp dnssd.a "/c/Program Files/Bonjour SDK/Lib/x64/dnssd.lib"
           cp dnssd.a "/c/Program Files/Bonjour SDK/Lib/x64/dnssd.a"
